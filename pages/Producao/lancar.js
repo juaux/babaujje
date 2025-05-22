@@ -1,7 +1,6 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { supabase } from '@/utils/supabaseClient';
-import { useRouter } from 'next/navigation';
 
 const LOCAL_STORAGE_KEY = 'vendasTemporarias';
 
@@ -38,17 +37,9 @@ export default function LancarVendas() {
     carregando: true
   });
 
-  const router = useRouter();
-
   // Atualização otimizada do estado
-  const updateState = (newState) => {
+  const updateState = useCallback((newState) => {
     setState(prev => ({ ...prev, ...newState }));
-  };
-
-  // Carregar dados iniciais
-  useEffect(() => {
-    carregarVendasTemporarias();
-    verificarRegistrosDatas();
   }, []);
 
   // Funções memoizadas
@@ -61,7 +52,7 @@ export default function LancarVendas() {
       updateState({ mensagem: 'Erro ao salvar vendas temporárias' });
       setTimeout(() => updateState({ mensagem: '' }), 3000);
     }
-  }, []);
+  }, [updateState]);
 
   const carregarVendasTemporarias = useCallback(() => {
     try {
@@ -86,7 +77,7 @@ export default function LancarVendas() {
       });
       setTimeout(() => updateState({ mensagem: '' }), 3000);
     }
-  }, []);
+  }, [updateState]);
 
   const verificarRegistrosDatas = useCallback(async () => {
     try {
@@ -108,7 +99,13 @@ export default function LancarVendas() {
       updateState({ mensagem: 'Erro ao verificar datas com registros' });
       setTimeout(() => updateState({ mensagem: '' }), 3000);
     }
-  }, []);
+  }, [updateState]);
+
+  // Carregar dados iniciais
+  useEffect(() => {
+    carregarVendasTemporarias();
+    verificarRegistrosDatas();
+  }, [carregarVendasTemporarias, verificarRegistrosDatas]);
 
   const adicionarVenda = useCallback((venda) => {
     if (!venda.preco_unitario && venda.preco_unitario !== 0) {
@@ -137,7 +134,7 @@ export default function LancarVendas() {
     if (state.vendas.length === 0) {
       updateState({ dataEscolhida: venda.data_venda });
     }
-  }, [state.vendas, salvarVendasTemporarias]);
+  }, [state.vendas, salvarVendasTemporarias, updateState]);
 
   const registrarVendas = useCallback(async () => {
     try {
@@ -185,7 +182,7 @@ export default function LancarVendas() {
       });
       setTimeout(() => updateState({ mensagem: '' }), 5000);
     }
-  }, [state.vendas, state.datasRegistradas, verificarRegistrosDatas]);
+  }, [state.vendas, state.datasRegistradas, verificarRegistrosDatas, updateState]);
 
   // Funções auxiliares
   const formatarData = (dataString) => {
@@ -195,12 +192,14 @@ export default function LancarVendas() {
   };
 
   const editarVenda = (venda) => updateState({ vendaEditando: venda });
+  
   const excluirVenda = (vendaId) => {
     const vendasAtualizadas = state.vendas.filter(v => v.id !== vendaId);
     salvarVendasTemporarias(vendasAtualizadas);
     updateState({ mensagem: 'Venda excluída com sucesso!' });
     setTimeout(() => updateState({ mensagem: '' }), 2000);
   };
+
   const salvarEdicao = (vendaAtualizada) => {
     if (state.vendas.length > 0 && state.vendas[0].data_venda !== vendaAtualizada.data_venda) {
       updateState({ 
@@ -241,16 +240,16 @@ export default function LancarVendas() {
         <div className="lg:w-2/3 p-4 border border-gray-200 rounded-lg bg-white flex flex-col">
           <h2 className="text-lg font-semibold text-gray-700 mb-4">Resumo de Produção</h2>
           <div className="flex-grow overflow-auto">
-  <SalesSummary
-    vendas={state.vendas.map(venda => ({
-      ...venda,
-      data_venda: formatarData(venda.data_venda)
-    }))}
-    onEditVenda={editarVenda}
-    onDeleteVenda={excluirVenda}
-    carregando={state.carregando}
-  />
-</div>
+            <SalesSummary
+              vendas={state.vendas.map(venda => ({
+                ...venda,
+                data_venda: formatarData(venda.data_venda)
+              }))}
+              onEditVenda={editarVenda}
+              onDeleteVenda={excluirVenda}
+              carregando={state.carregando}
+            />
+          </div>
 
           {state.vendas.length > 0 && (
             <div className="mt-4 flex justify-end pt-4 border-t border-gray-200">

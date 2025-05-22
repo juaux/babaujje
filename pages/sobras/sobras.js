@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 
 export default function SobrasVendas() {
   const [sobras, setSobras] = useState([]);
-  const [carregando, setCarregando] = useState(true);
   const [periodo, setPeriodo] = useState('Este Mês');
   const [totalSobras, setTotalSobras] = useState(0);
 
@@ -13,8 +12,29 @@ export default function SobrasVendas() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   );
 
-  const buscarDados = async () => {
-    setCarregando(true);
+  const getDataInicioPeriodo = useCallback((periodoSelecionado) => {
+    const data = new Date();
+    switch (periodoSelecionado) {
+      case 'Hoje': return data.toISOString().split('T')[0];
+      case 'Esta Semana': 
+        data.setDate(data.getDate() - data.getDay()); 
+        return data.toISOString().split('T')[0];
+      case 'Este Mês': 
+        return new Date(data.getFullYear(), data.getMonth(), 1).toISOString().split('T')[0];
+      case 'Este Ano': 
+        return new Date(data.getFullYear(), 0, 1).toISOString().split('T')[0];
+      default: 
+        return new Date().toISOString().split('T')[0];
+    }
+  }, []);
+
+  const calcularSobrasPorPeriodo = useCallback((vendas, despesas) => {
+    const totalVendas = vendas.reduce((acc, v) => acc + (v.preco_unitario * v.quantidade), 0);
+    const totalDespesas = despesas.reduce((acc, d) => acc + (d.valor * d.quantidade), 0);
+    return [{ data: new Date().toLocaleDateString(), valor: totalVendas - totalDespesas }];
+  }, []);
+
+  const buscarDados = useCallback(async () => {
     try {
       // 1. Buscar vendas no período
       const { data: vendas } = await supabase
@@ -28,46 +48,18 @@ export default function SobrasVendas() {
         .select('*')
         .gte('data', getDataInicioPeriodo(periodo));
 
-      // 3. Calcular sobras por dia/semana/mês
-      const sobrasCalculadas = calcularSobrasPorPeriodo(vendas, despesas, periodo);
+      // 3. Calcular sobras
+      const sobrasCalculadas = calcularSobrasPorPeriodo(vendas, despesas);
       setSobras(sobrasCalculadas);
       setTotalSobras(sobrasCalculadas.reduce((acc, item) => acc + item.valor, 0));
-
     } catch (error) {
       console.error("Erro ao buscar dados:", error);
-    } finally {
-      setCarregando(false);
     }
-  };
+  }, [periodo, getDataInicioPeriodo, calcularSobrasPorPeriodo]);
 
   useEffect(() => {
     buscarDados();
-  }, [periodo]);
-
-  // Funções auxiliares
-  const getDataInicioPeriodo = (periodo) => {
-    const data = new Date();
-    switch (periodo) {
-      case 'Hoje': return data.toISOString().split('T')[0];
-      case 'Esta Semana': 
-        data.setDate(data.getDate() - data.getDay()); 
-        return data.toISOString().split('T')[0];
-      case 'Este Mês': 
-        return new Date(data.getFullYear(), data.getMonth(), 1).toISOString().split('T')[0];
-      case 'Este Ano': 
-        return new Date(data.getFullYear(), 0, 1).toISOString().split('T')[0];
-      default: 
-        return new Date().toISOString().split('T')[0];
-    }
-  };
-
-  const calcularSobrasPorPeriodo = (vendas, despesas, periodo) => {
-    // Implemente a lógica para agrupar por dia/semana/mês
-    // Exemplo simplificado:
-    const totalVendas = vendas.reduce((acc, v) => acc + (v.preco_unitario * v.quantidade), 0);
-    const totalDespesas = despesas.reduce((acc, d) => acc + (d.valor * d.quantidade), 0);
-    return [{ data: new Date().toLocaleDateString(), valor: totalVendas - totalDespesas }];
-  };
+  }, [buscarDados]);
 
   const formatarMoeda = (valor) => {
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

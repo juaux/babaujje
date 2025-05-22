@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/utils/supabaseClient';
-import { v4 as uuidv4 } from 'uuid';
 
 export default function SalesForm({ adicionarVenda, vendasAtuais = [] }) {
     const [produtoId, setProdutoId] = useState('');
@@ -8,31 +7,29 @@ export default function SalesForm({ adicionarVenda, vendasAtuais = [] }) {
     const [dataVenda, setDataVenda] = useState(new Date().toISOString().slice(0, 10));
     const [produtos, setProdutos] = useState([]);
     const [erro, setErro] = useState('');
-    const [imagemUrl, setImagemUrl] = useState('');
 
-    useEffect(() => {
-        const fetchProdutos = async () => {
-            try {
-                const { data, error } = await supabase
-                    .from('produtos')
-                    .select('id, nome, preco_venda, imagem_url');
+    const fetchProdutos = useCallback(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('produtos')
+                .select('id, nome, preco_venda, imagem_url');
 
-                if (error) {
-                    console.error('Erro ao buscar produtos:', error);
-                    setErro('Erro ao buscar produtos.');
-                } else {
-                    setProdutos(data || []);
-                }
-            } catch (error) {
-                console.error('Erro inesperado ao buscar produtos:', error);
-                setErro('Erro inesperado ao buscar produtos.');
+            if (error) {
+                console.error('Erro ao buscar produtos:', error);
+                setErro('Erro ao buscar produtos.');
+            } else {
+                setProdutos(data || []);
             }
-        };
-
-        fetchProdutos();
+        } catch (error) {
+            console.error('Erro inesperado ao buscar produtos:', error);
+            setErro('Erro inesperado ao buscar produtos.');
+        }
     }, []);
 
-    // Limpar erro após 3 segundos
+    useEffect(() => {
+        fetchProdutos();
+    }, [fetchProdutos]);
+
     useEffect(() => {
         if (erro) {
             const timer = setTimeout(() => {
@@ -43,13 +40,12 @@ export default function SalesForm({ adicionarVenda, vendasAtuais = [] }) {
         }
     }, [erro]);
 
-    // Verificar se o produto já foi lançado
     const verificaProdutoJaLancado = useCallback((produtoId) => {
         if (!Array.isArray(vendasAtuais)) return false;
         return vendasAtuais.some(venda => venda.produto_id === produtoId);
     }, [vendasAtuais]);
 
-    const handleSubmit = (event) => {
+    const handleSubmit = useCallback((event) => {
         event.preventDefault();
 
         if (!produtoId) {
@@ -57,7 +53,6 @@ export default function SalesForm({ adicionarVenda, vendasAtuais = [] }) {
             return;
         }
 
-        // Verificar se o produto já foi lançado
         if (verificaProdutoJaLancado(produtoId)) {
             setErro('Produto já lançado! Não é possível lançar o mesmo produto novamente.');
             return;
@@ -66,42 +61,29 @@ export default function SalesForm({ adicionarVenda, vendasAtuais = [] }) {
         const produtoSelecionado = produtos.find((p) => p.id === produtoId);
 
         if (produtoSelecionado) {
-            // Preparar o objeto de venda
             const novaVenda = {
                 produto_id: produtoId,
                 quantidade: parseInt(quantidade, 10),
                 data_venda: dataVenda,
                 preco_unitario: produtoSelecionado.preco_venda,
-                // Adicionar o nome do produto para exibição
                 produto: produtoSelecionado.nome,
                 preco: produtoSelecionado.preco_venda,
-                imagem_url: produtoSelecionado.imagem_url // Incluir o URL da imagem
+                imagem_url: produtoSelecionado.imagem_url
             };
 
-            // Adicionar a venda ao estado do componente pai
             adicionarVenda(novaVenda);
-
-            // Resetar o formulário
             setProdutoId('');
             setQuantidade(1);
             setDataVenda(new Date().toISOString().slice(0, 10));
-            setImagemUrl('');
         } else {
             setErro('Produto selecionado inválido.');
         }
-    };
+    }, [produtoId, quantidade, dataVenda, produtos, verificaProdutoJaLancado, adicionarVenda]);
 
-    const handleProdutoChange = (e) => {
+    const handleProdutoChange = useCallback((e) => {
         const selectedProdutoId = e.target.value;
         setProdutoId(selectedProdutoId);
-
-        const produto = produtos.find(p => p.id === selectedProdutoId);
-        if (produto && produto.imagem_url) {
-            setImagemUrl(produto.imagem_url);
-        } else {
-            setImagemUrl('');
-        }
-    };
+    }, []);
 
     return (
         <form onSubmit={handleSubmit} className="space-y-3 max-w-md">
@@ -119,7 +101,6 @@ export default function SalesForm({ adicionarVenda, vendasAtuais = [] }) {
                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     value={produtoId}
                     onChange={handleProdutoChange}
-                    style={{ width: '100%' }}
                 >
                     <option value="">Selecione um produto</option>
                     {produtos.map((produto) => (

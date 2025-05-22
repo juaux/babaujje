@@ -35,7 +35,7 @@ export default function SalesSummary({ vendas = [], onEditVenda, onDeleteVenda }
     };
 
     return (
-        <div className="mt-8" key={`vendas-summary-${vendasCount}`}>
+        <div className="mt-8">
             <h2 className="text-lg font-semibold mb-4">Resumo ({vendasCount} {vendasCount === 1 ? 'item' : 'itens'})</h2>
             <div className="overflow-x-auto">
                 <table className="min-w-full leading-normal">
@@ -69,14 +69,19 @@ export default function SalesSummary({ vendas = [], onEditVenda, onDeleteVenda }
                             vendas.map((venda) => {
                                 const preco = venda.preco || venda.preco_unitario || 0;
                                 return (
-                                    <tr key={venda.id || Math.random().toString()}>
+                                    <tr key={venda.id}>
                                         <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
                                             {venda.data_venda}
                                         </td>
                                         <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                                            {/* Exibir a imagem aqui */}
                                             {venda.imagem_url && (
-                                                <image src={venda.imagem_url} alt={venda.produto || "Imagem do Produto"} style={{ maxWidth: '50px', maxHeight: '50px' }} />
+                                                <Image 
+                                                    src={venda.imagem_url} 
+                                                    alt={venda.produto || "Imagem do Produto"} 
+                                                    width={50}
+                                                    height={50}
+                                                    className="object-contain"
+                                                />
                                             )}
                                         </td>
                                         <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
@@ -113,7 +118,7 @@ export default function SalesSummary({ vendas = [], onEditVenda, onDeleteVenda }
                         ) : (
                             <tr>
                                 <td colSpan={7} className="px-5 py-5 border-b border-gray-200 bg-white text-sm text-center">
-                                    Nenhuma produçao registrada
+                                    Nenhuma produção registrada
                                 </td>
                             </tr>
                         )}

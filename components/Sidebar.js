@@ -80,7 +80,7 @@ export default function Sidebar({ open }) {
       } fixed top-0 left-0 h-full w-60 bg-[#f6b8c5] text-gray-800 shadow-md z-50`}
     >
       <div className="p-4">
-        <image
+        <img
           src="/babauje.png"
           alt="Babauje Logo"
           className="mb-4 mx-auto w-40"
