@@ -47,8 +47,8 @@ export default function ConsultaVendas() {
   }, []);
 
   useEffect(() => {
-    calcularTotalGeral();
-  }, [vendas]);
+  calcularTotalGeral();
+}, [vendas, calcularTotalGeral]); // Adiciona a função como dependência
 
   const fetchVendas = async (inicio = null, fim = null) => {
     setLoading(true);
