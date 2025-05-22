@@ -3,7 +3,6 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Input } from './ui/input'; // Caminho corrigido
 import { Button } from './ui/button'; // Caminho corrigido
 import { Calendar } from "./ui/calendar"; // Caminho corrigido
-import { format } from "date-fns";
 import { ptBR } from 'date-fns/locale';
 
 // Função utils inline para evitar problemas de caminho

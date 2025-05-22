@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/utils/supabaseClient';
 
 export default function EditVendaModal({ venda, onSalvar, onCancelar }) {
   const [quantidade, setQuantidade] = useState(venda?.quantidade || 1);

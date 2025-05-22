@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 
 export default function SalesSummary({ vendas = [], onEditVenda, onDeleteVenda }) {
     const [totalGeral, setTotalGeral] = useState(0);
@@ -75,7 +76,7 @@ export default function SalesSummary({ vendas = [], onEditVenda, onDeleteVenda }
                                         <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
                                             {/* Exibir a imagem aqui */}
                                             {venda.imagem_url && (
-                                                <img src={venda.imagem_url} alt={venda.produto || "Imagem do Produto"} style={{ maxWidth: '50px', maxHeight: '50px' }} />
+                                                <image src={venda.imagem_url} alt={venda.produto || "Imagem do Produto"} style={{ maxWidth: '50px', maxHeight: '50px' }} />
                                             )}
                                         </td>
                                         <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
