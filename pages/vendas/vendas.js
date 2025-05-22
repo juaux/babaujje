@@ -14,21 +14,25 @@ export default function Vendas() {
   const [sobrasRegistradas, setSobrasRegistradas] = useState([]);
   const [sendingToSupabase, setSendingToSupabase] = useState(false);
   const [sendingSalesToSupabase, setSendingSalesToSupabase] = useState(false);
-  const [notification, setNotification] = useState({ show: false, message: '', type: '' });
-
-  // Função para mostrar notificação
-  const showNotification = (message, type = 'success') => {
-    setNotification({ show: true, message, type });
-    setTimeout(() => {
-      setNotification({ show: false, message: '', type: '' });
-    }, 3000); // Remove a notificação após 3 segundos
-  };
+  const [datasRegistradas, setDatasRegistradas] = useState(new Set());
+  const [statusMessages, setStatusMessages] = useState({}); // Mensagens fixas por data
+  const [originalProducao, setOriginalProducao] = useState({}); // Para controle de edições
 
   // Carregar dados do localStorage
   useEffect(() => {
     const savedSobras = localStorage.getItem('sobrasRegistradas');
     if (savedSobras) {
       setSobrasRegistradas(JSON.parse(savedSobras));
+    }
+    
+    const savedDatasRegistradas = localStorage.getItem('datasRegistradas');
+    if (savedDatasRegistradas) {
+      setDatasRegistradas(new Set(JSON.parse(savedDatasRegistradas)));
+    }
+
+    const savedStatusMessages = localStorage.getItem('statusMessages');
+    if (savedStatusMessages) {
+      setStatusMessages(JSON.parse(savedStatusMessages));
     }
   }, []);
 
@@ -60,6 +64,17 @@ export default function Vendas() {
     if (error) console.error('Erro ao buscar produção:', error);
     else {
       setProducao(data);
+      
+      // Armazena dados originais para controle de edições
+      const original = {};
+      data.forEach(item => {
+        original[item.id] = {
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario
+        };
+      });
+      setOriginalProducao(original);
+
       // Inicializa as sobras com zero ou valores salvos
       const inicialSobras = {};
       data.forEach(item => {
@@ -74,6 +89,28 @@ export default function Vendas() {
   useEffect(() => {
     fetchProducao();
   }, []);
+
+  // Verificar se houve edições na data
+  const hasChangesInDate = (dataVenda) => {
+    const itemsData = producaoPorData[dataVenda] || [];
+    return itemsData.some(item => {
+      const original = originalProducao[item.id];
+      return original && (
+        original.quantidade !== item.quantidade ||
+        original.preco_unitario !== item.preco_unitario
+      );
+    });
+  };
+
+  // Atualizar mensagem de status
+  const updateStatusMessage = (dataVenda, message, type = 'success') => {
+    const newMessages = {
+      ...statusMessages,
+      [dataVenda]: { message, type, timestamp: new Date().toISOString() }
+    };
+    setStatusMessages(newMessages);
+    localStorage.setItem('statusMessages', JSON.stringify(newMessages));
+  };
 
   // Atualizar sobras
   const handleSobraChange = (id, value) => {
@@ -104,7 +141,7 @@ export default function Vendas() {
       valor_total: quantidadeSobra * item.preco_unitario,
       data_venda: item.data_venda,
       data_registro: new Date().toISOString().split('T')[0],
-      updated: false // Flag para controle de envio ao Supabase
+      updated: false
     };
 
     const updatedSobras = [
@@ -124,25 +161,67 @@ export default function Vendas() {
       const vendasDoDia = producaoPorData[dataVenda] || [];
       
       if (vendasDoDia.length === 0) {
-        alert('Nenhuma venda para registrar para esta data!');
+        updateStatusMessage(dataVenda, 'Nenhuma venda para registrar!', 'error');
         return;
       }
 
-      const { error } = await supabase
-        .from('vendas')
-        .insert(vendasDoDia.map(venda => ({
-          produto_id: venda.produto_id,
-          quantidade: venda.quantidade,
-          preco_unitario: venda.preco_unitario,
-          data_venda: venda.data_venda
-        })));
+      const isRegistered = datasRegistradas.has(dataVenda);
+      const hasChanges = hasChangesInDate(dataVenda);
 
-      if (error) throw error;
+      if (isRegistered && !hasChanges) {
+        updateStatusMessage(dataVenda, 'Venda já registrada! Não há alterações.', 'warning');
+        return;
+      }
 
-      showNotification('Venda Registrada', 'success');
+      if (isRegistered && hasChanges) {
+        // UPDATE - atualizar registros existentes
+        for (const venda of vendasDoDia) {
+          const { error } = await supabase
+            .from('vendas')
+            .update({
+              quantidade: venda.quantidade,
+              preco_unitario: venda.preco_unitario
+            })
+            .eq('produto_id', venda.produto_id)
+            .eq('data_venda', venda.data_venda);
+
+          if (error) throw error;
+        }
+        updateStatusMessage(dataVenda, 'Venda Atualizada', 'success');
+      } else {
+        // INSERT - novo registro
+        const { error } = await supabase
+          .from('vendas')
+          .insert(vendasDoDia.map(venda => ({
+            produto_id: venda.produto_id,
+            quantidade: venda.quantidade,
+            preco_unitario: venda.preco_unitario,
+            data_venda: venda.data_venda
+          })));
+
+        if (error) throw error;
+
+        // Adiciona data às registradas
+        const newDatasRegistradas = new Set([...datasRegistradas, dataVenda]);
+        setDatasRegistradas(newDatasRegistradas);
+        localStorage.setItem('datasRegistradas', JSON.stringify([...newDatasRegistradas]));
+        
+        updateStatusMessage(dataVenda, 'Venda Registrada', 'success');
+      }
+
+      // Atualiza dados originais após registro/atualização
+      const newOriginal = { ...originalProducao };
+      vendasDoDia.forEach(item => {
+        newOriginal[item.id] = {
+          quantidade: item.quantidade,
+          preco_unitario: item.preco_unitario
+        };
+      });
+      setOriginalProducao(newOriginal);
+
     } catch (error) {
       console.error('Erro ao registrar vendas:', error);
-      showNotification('Erro ao registrar vendas!', 'error');
+      updateStatusMessage(dataVenda, 'Erro ao registrar vendas!', 'error');
     } finally {
       setSendingSalesToSupabase(false);
     }
@@ -170,7 +249,6 @@ export default function Vendas() {
 
       if (error) throw error;
 
-      // Marca como enviado no estado local
       const updatedSobras = sobrasRegistradas.map(s => ({
         ...s,
         updated: true
@@ -178,16 +256,16 @@ export default function Vendas() {
 
       setSobrasRegistradas(updatedSobras);
       localStorage.setItem('sobrasRegistradas', JSON.stringify(updatedSobras));
-      showNotification('Sobras registradas com sucesso!', 'success');
+      alert('Sobras registradas com sucesso!');
     } catch (error) {
       console.error('Erro ao registrar sobras:', error);
-      showNotification('Erro ao registrar sobras!', 'error');
+      alert('Erro ao registrar sobras!');
     } finally {
       setSendingToSupabase(false);
     }
   };
 
-  // Formatar data - versão corrigida
+  // Formatar data
   const formatDate = (dateString) => {
     const [year, month, day] = dateString.split('-');
     const date = new Date(year, month - 1, day);
@@ -212,15 +290,6 @@ export default function Vendas() {
 
   return (
     <div className="container mx-auto p-4">
-      {/* Notificação */}
-      {notification.show && (
-        <div className={`fixed left-4 top-4 z-50 px-6 py-3 rounded-lg shadow-lg font-semibold text-white ${
-          notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-        }`}>
-          {notification.message}
-        </div>
-      )}
-
       <h1 className="text-2xl font-bold mb-6">Controle de Vendas</h1>
       
       {loading ? (
@@ -232,11 +301,22 @@ export default function Vendas() {
           {/* Tabela de Vendas por Data */}
           {Object.entries(producaoPorData).map(([data, items]) => {
             const { totalVendas, totalSobras } = calcularTotaisPorData(items);
+            const isRegistered = datasRegistradas.has(data);
+            const hasChanges = hasChangesInDate(data);
+            const statusMessage = statusMessages[data];
 
             return (
               <div key={data} className="mb-8 bg-white rounded-lg shadow-md overflow-hidden">
-                <div className="bg-gray-100 px-6 py-3 border-b">
+                <div className="bg-gray-100 px-6 py-3 border-b flex justify-between items-center">
                   <h2 className="font-semibold">Vendas em {formatDate(data)}</h2>
+                  {statusMessage && (
+                    <div className={`px-3 py-1 rounded text-white font-semibold ${
+                      statusMessage.type === 'success' ? 'bg-green-500' :
+                      statusMessage.type === 'warning' ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}>
+                      {statusMessage.message}
+                    </div>
+                  )}
                 </div>
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -302,7 +382,6 @@ export default function Vendas() {
                     })}
                   </tbody>
                   <tfoot className="bg-gray-50">
-                    {/* Linha de Sobras */}
                     {totalSobras > 0 && (
                       <tr className="bg-red-50">
                         <td colSpan="3" className="px-6 py-2 text-right font-semibold">Total Sobras:</td>
@@ -310,7 +389,6 @@ export default function Vendas() {
                         <td colSpan="2"></td>
                       </tr>
                     )}
-                    {/* Total do Dia */}
                     <tr>
                       <td colSpan="3" className="px-6 py-3 text-right font-semibold">Total Líquido:</td>
                       <td className="px-6 py-3 font-semibold">
@@ -325,10 +403,16 @@ export default function Vendas() {
                     onClick={() => registrarVendasNoSupabase(data)}
                     disabled={sendingSalesToSupabase}
                     className={`px-4 py-2 rounded text-white ${
-                      sendingSalesToSupabase ? 'bg-gray-500' : 'bg-blue-600 hover:bg-blue-700'
+                      sendingSalesToSupabase ? 'bg-gray-500' :
+                      isRegistered && !hasChanges ? 'bg-gray-400' :
+                      hasChanges ? 'bg-orange-600 hover:bg-orange-700' :
+                      'bg-blue-600 hover:bg-blue-700'
                     }`}
                   >
-                    {sendingSalesToSupabase ? 'Enviando...' : 'Registrar Vendas'}
+                    {sendingSalesToSupabase ? 'Enviando...' :
+                     isRegistered && !hasChanges ? 'Já Registrado' :
+                     hasChanges ? 'Atualizar Vendas' :
+                     'Registrar Vendas'}
                   </button>
                 </div>
               </div>
