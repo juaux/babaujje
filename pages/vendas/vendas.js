@@ -1,15 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+import { supabase } from '@/utils/supabaseClient';
 
 export default function Vendas() {
   const [producao, setProducao] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [sobras, setSobras] = useState([]);
   const [datasRegistradas, setDatasRegistradas] = useState(new Set());
   const [statusMessages, setStatusMessages] = useState({});
   const [originalProducao, setOriginalProducao] = useState({});
@@ -17,11 +11,9 @@ export default function Vendas() {
   // Carregar dados do localStorage
   useEffect(() => {
     const loadLocalData = () => {
-      const savedSobras = localStorage.getItem('sobrasRegistradas');
       const savedDatas = localStorage.getItem('datasRegistradas');
       const savedStatus = localStorage.getItem('statusMessages');
 
-      if (savedSobras) setSobras(JSON.parse(savedSobras));
       if (savedDatas) setDatasRegistradas(new Set(JSON.parse(savedDatas)));
       if (savedStatus) setStatusMessages(JSON.parse(savedStatus));
     };
@@ -39,7 +31,7 @@ export default function Vendas() {
     }, {});
   }, [producao]);
 
-  // Buscar dados da produção
+  // Buscar dados da produção (removido supabase das dependências)
   const fetchProducao = useCallback(async () => {
     setLoading(true);
     try {
@@ -60,7 +52,6 @@ export default function Vendas() {
       const producaoData = data || [];
       setProducao(producaoData);
 
-      // Armazenar valores originais
       const originalValues = {};
       producaoData.forEach(item => {
         originalValues[item.id] = {
@@ -75,7 +66,7 @@ export default function Vendas() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // Removido supabase das dependências
 
   useEffect(() => {
     fetchProducao();
@@ -103,7 +94,7 @@ export default function Vendas() {
     localStorage.setItem('statusMessages', JSON.stringify(newMessages));
   }, [statusMessages]);
 
-  // Registrar vendas
+  // Registrar vendas (adicionado hasChangesInDate nas dependências)
   const registrarVendas = useCallback(async (dataVenda) => {
     try {
       const vendasDoDia = producaoPorData()[dataVenda] || [];
@@ -122,7 +113,6 @@ export default function Vendas() {
       }
 
       if (isRegistered) {
-        // Atualizar vendas existentes
         await Promise.all(vendasDoDia.map(venda => 
           supabase
             .from('vendas')
@@ -132,10 +122,9 @@ export default function Vendas() {
             })
             .eq('produto_id', venda.produto_id)
             .eq('data_venda', venda.data_venda)
-        ));
+  )); // ← Remova o ponto e vírgula extra aqui
         updateStatus(dataVenda, 'Vendas atualizadas!', 'success');
       } else {
-        // Registrar novas vendas
         const { error } = await supabase
           .from('vendas')
           .insert(vendasDoDia.map(venda => ({
@@ -153,7 +142,6 @@ export default function Vendas() {
         updateStatus(dataVenda, 'Vendas registradas!', 'success');
       }
 
-      // Atualizar cache local
       const newOriginal = { ...originalProducao };
       vendasDoDia.forEach(item => {
         newOriginal[item.id] = {
@@ -167,7 +155,7 @@ export default function Vendas() {
       console.error('Erro ao registrar vendas:', error);
       updateStatus(dataVenda, 'Erro ao registrar vendas!', 'error');
     }
-  }, [datasRegistradas, originalProducao, producaoPorData, updateStatus]);
+  }, [datasRegistradas, originalProducao, producaoPorData, updateStatus, hasChangesInDate]); 
 
   if (loading) {
     return (

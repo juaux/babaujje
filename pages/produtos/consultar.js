@@ -233,7 +233,7 @@ export default function GerenciarProdutos() {
       {imagePreview && (
         <div className="mt-2">
           <p className="text-sm text-gray-700 mb-1">Preview:</p>
-          <image 
+          <Image 
             src={imagePreview} 
             alt="Preview da imagem" 
             className="h-32 object-cover rounded-md"

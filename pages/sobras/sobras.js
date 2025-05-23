@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/utils/supabaseClient';  // Adicione esta linha
 import Link from 'next/link';
 
 export default function SobrasVendas() {
@@ -7,10 +7,7 @@ export default function SobrasVendas() {
   const [periodo, setPeriodo] = useState('Este Mês');
   const [totalSobras, setTotalSobras] = useState(0);
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
+  
 
   const getDataInicioPeriodo = useCallback((periodoSelecionado) => {
     const data = new Date();
