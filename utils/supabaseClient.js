@@ -1,24 +1,44 @@
 // src/supabaseClient.js
 import { createClient } from '@supabase/supabase-js';
 
+// Validação das variáveis de ambiente
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(`
+    Variáveis de ambiente do Supabase não configuradas!
+    Certifique-se de ter configurado:
+    - NEXT_PUBLIC_SUPABASE_URL
+    - NEXT_PUBLIC_SUPABASE_ANON_KEY
+    no arquivo .env.local e nas configurações do Vercel
+  `);
+}
+
+// Criação do cliente Supabase
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Função para testar a conexão
-export const testConnection = async () => {
-  try {
-    const { data, error } = await supabase.from('produtos').select('*').limit(1); // Testa a conexão com a tabela "produtos"
-    if (error) {
-      console.error('Erro ao conectar ao banco de dados:', error.message);
-    } else {
-      console.log('Conexão com o banco de dados estabelecida com sucesso!');
+// Função para testar conexão (opcional - apenas para desenvolvimento)
+export const testSupabaseConnection = async () => {
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      const { error } = await supabase
+        .from('produtos')
+        .select('*')
+        .limit(1);
+      
+      if (error) throw error;
+      
+      console.log('✅ Conexão com Supabase estabelecida com sucesso');
+      return true;
+    } catch (error) {
+      console.error('❌ Falha na conexão com Supabase:', error.message);
+      return false;
     }
-  } catch (err) {
-    console.error('Erro inesperado ao conectar ao banco de dados:', err.message);
   }
 };
 
-// Executa o teste de conexão ao inicializar o cliente
-testConnection();
+// Teste automático apenas em desenvolvimento
+if (process.env.NODE_ENV === 'development') {
+  testSupabaseConnection();
+}
