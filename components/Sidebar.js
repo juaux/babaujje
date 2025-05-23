@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/router';
 
 // Substitutos dos ícones usando react-icons
@@ -80,10 +81,13 @@ export default function Sidebar({ open }) {
       } fixed top-0 left-0 h-full w-60 bg-[#f6b8c5] text-gray-800 shadow-md z-50`}
     >
       <div className="p-4">
-        <img
+        <Image
           src="/babauje.png"
           alt="Babauje Logo"
-          className="mb-4 mx-auto w-40"
+          width={160}
+          height={80}
+          className="mb-4 mx-auto"
+          priority
         />
         <h6 className="text-xl font-bold text-center">Babauje</h6>
       </div>

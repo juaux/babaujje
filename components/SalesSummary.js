@@ -30,7 +30,15 @@ export default function SalesSummary({ vendas = [], onEditVenda, onDeleteVenda }
 
     const handleDelete = (vendaId) => {
         if (window.confirm('Tem certeza que deseja excluir esta venda?')) {
-            onDeleteVenda?.(vendaId);
+            if (onDeleteVenda) {
+                onDeleteVenda(vendaId);
+            }
+        }
+    };
+
+    const handleEdit = (venda) => {
+        if (onEditVenda) {
+            onEditVenda(venda);
         }
     };
 
@@ -99,7 +107,7 @@ export default function SalesSummary({ vendas = [], onEditVenda, onDeleteVenda }
                                         <td className="px-5 py-5 border-b border-gray-200 bg-white text-sm">
                                             <div className="flex space-x-2">
                                                 <button
-                                                    onClick={() => onEditVenda?.(venda)}
+                                                    onClick={() => handleEdit(venda)}
                                                     className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs"
                                                 >
                                                     Editar

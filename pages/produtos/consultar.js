@@ -1,6 +1,8 @@
 ﻿import React, { useState, useEffect } from 'react';
 import ProductTable from "@/components/ProductTable";
 import { supabase } from '@/utils/supabaseClient';
+import Image from 'next/image';
+
 
 export default function GerenciarProdutos() {
   const [produtos, setProdutos] = useState([]);
@@ -231,7 +233,7 @@ export default function GerenciarProdutos() {
       {imagePreview && (
         <div className="mt-2">
           <p className="text-sm text-gray-700 mb-1">Preview:</p>
-          <img 
+          <image 
             src={imagePreview} 
             alt="Preview da imagem" 
             className="h-32 object-cover rounded-md"

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useCallback  } from 'react';
 import { supabase } from '@/utils/supabaseClient';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -46,11 +46,12 @@ export default function ConsultaVendas() {
     fetchVendas();
   }, []);
 
-  useEffect(() => {
+ useEffect(() => {
   calcularTotalGeral();
-}, [vendas, calcularTotalGeral]); // Adiciona a função como dependência
+}, [vendas, calcularTotalGeral]); // Adicione 'calcularTotalGeral' como dependência
 
-  const fetchVendas = async (inicio = null, fim = null) => {
+
+const fetchVendas = async (inicio = null, fim = null) => {
     setLoading(true);
     setError(null);
 
@@ -105,10 +106,10 @@ export default function ConsultaVendas() {
     }
   };
 
-  const calcularTotalGeral = () => {
-    const total = vendas.reduce((acc, venda) => acc + (venda.quantidade * venda.preco_unitario), 0);
-    setTotalGeral(total);
-  };
+ const calcularTotalGeral = useCallback(() => {
+  const total = vendas.reduce((acc, venda) => acc + (venda.quantidade * venda.preco_unitario), 0);
+  setTotalGeral(total);
+}, [vendas]); // Adicione 'vendas' como dependência aqui
 
   const handleNewVendaChange = (e) => {
     setNewVenda({ ...newVenda, [e.target.name]: e.target.value });
