@@ -1,22 +1,9 @@
 ﻿import React from 'react';
 import { FaEdit, FaTrash } from 'react-icons/fa';
 import Image from 'next/image';
+import PropTypes from 'prop-types';
 
-interface Product {
-  id: string;
-  nome: string;
-  categoria: string;
-  preco_venda?: number;
-  imagem_url?: string;
-}
-
-interface ProductTableProps {
-  produtos: Product[];
-  onDelete: (id: string) => Promise<void>;
-  onEdit: (product: Product) => void;
-}
-
-export default function ProductTable({ produtos, onDelete, onEdit }: ProductTableProps) {
+export default function ProductTable({ produtos, onDelete, onEdit }) {
   return (
     <div className="overflow-x-auto shadow-md rounded-lg">
       <table className="min-w-full divide-y divide-gray-200">
@@ -104,3 +91,17 @@ export default function ProductTable({ produtos, onDelete, onEdit }: ProductTabl
     </div>
   );
 }
+
+ProductTable.propTypes = {
+  produtos: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      nome: PropTypes.string.isRequired,
+      categoria: PropTypes.string.isRequired,
+      preco_venda: PropTypes.number,
+      imagem_url: PropTypes.string
+    })
+  ).isRequired,
+  onDelete: PropTypes.func.isRequired,
+  onEdit: PropTypes.func.isRequired
+};
